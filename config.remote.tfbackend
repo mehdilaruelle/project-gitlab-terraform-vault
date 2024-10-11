@@ -1,0 +1,2 @@
+workspaces { name = "TFC_WORKSPACE" }
+organization = "TFC_ORG"

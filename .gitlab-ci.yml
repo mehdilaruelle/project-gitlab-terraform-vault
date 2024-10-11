@@ -1,0 +1,73 @@
+image: bash
+
+stages:
+  - test
+  - plan
+  - deploy
+
+variables:
+  TERRAFORM_VERSION: 1.9.7
+  VAULT_VERSION: 1.17.6
+
+.terraform: &terraform
+  # Authenticate and get token. Token expiry time and other properties can be configured
+  # when configuring JWT Auth - https://www.vaultproject.io/api/auth/jwt#parameters-1
+  - export VAULT_TOKEN="$(vault write -field=token auth/${TF_VAR_vault_pipeline_auth_path}/login role=$TF_VAR_vault_secret_aws_role jwt=$PIPELINE_ID_TOKEN)"
+  # Now use the VAULT_TOKEN to provide child token and execute Terraform in AWS env
+  - export TF_VAR_vault_agent_version=$VAULT_VERSION
+  - sed -i "s/TFC_WORKSPACE/$CI_PROJECT_NAME/g" config.remote.tfbackend && sed -i "s/TFC_ORG/$TFC_ORG_NAME/g" config.remote.tfbackend
+  - echo "credentials \"app.terraform.io\" { token = \"$(vault read -field=token $VAULT_SECRET_TERRAFORM_PATH)\" }" >> ~/.terraform.d/credentials.tfrc.json
+  - terraform init -backend-config=config.remote.tfbackend
+
+before_script:
+  - apk --update add curl unzip bash
+  - cd /usr/local/bin/
+  - curl https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_386.zip --output terraform.zip
+  - unzip -o terraform.zip
+  - curl https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_386.zip --output vault.zip
+  - unzip -o vault.zip
+  - cd -
+  - terraform version
+  - vault version
+
+vault_auth:
+  stage: test
+  id_tokens:
+    PIPELINE_ID_TOKEN:
+      aud: $TOKEN_AUD
+  script:
+    - export VAULT_TOKEN="$(vault write -field=token auth/${TF_VAR_vault_pipeline_auth_path}/login role=$TF_VAR_vault_secret_aws_role jwt=$PIPELINE_ID_TOKEN)"
+    - vault token lookup
+
+plan:
+  stage: plan
+  artifacts:
+    paths:
+      - .terraform/
+    expire_in: 1 day
+  id_tokens:
+    PIPELINE_ID_TOKEN:
+      aud: $TOKEN_AUD
+  script:
+    - *terraform
+    - terraform plan
+
+apply:
+  stage: deploy
+  when: manual
+  id_tokens:
+    PIPELINE_ID_TOKEN:
+      aud: $TOKEN_AUD
+  script:
+    - *terraform
+    - terraform apply -auto-approve
+
+destroy:
+  stage: deploy
+  when: manual
+  id_tokens:
+    PIPELINE_ID_TOKEN:
+      aud: $TOKEN_AUD
+  script:
+    - *terraform
+    - terraform destroy -auto-approve
