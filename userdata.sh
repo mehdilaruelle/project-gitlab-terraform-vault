@@ -54,12 +54,12 @@ ${vault_agent_parameters} ./vault agent -config=vault-agent.hcl &
 cat << 'EOT' > /var/www/html/index.php
 <html>
     <head>
-        <title>Hello HashiCorp!</title>
+        <title>Hello HashiConf!</title>
     </head>
 
     <body>
 
-    <h1>Hello HashiCorp!</h1>
+    <h1>Hello HashiConf!</h1>
     Attempting MySQL connection from php...</br>
         <?php
             if (file_exists("/var/www/secrets.json")) {

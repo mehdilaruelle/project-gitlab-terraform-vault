@@ -46,6 +46,27 @@ After the application is authenticated to the Vault, this one will retrieve the 
 
 The Vault Agent is configure via the [userdata.sh](./userdata.sh) file.
 
+## Deploy the solution
+
+To deploy the application, push to the target GitLab-CI repository this folder.
+When the push is done, a GitLab-CI will be trigger like this:
+![GitLab-CI pipeline](./docs/pipeline_running.png)
+
+When the `plan` job is done, verify the `plan` and if the plan has no error and match your expectation, you can launch the `apply` job. You should have this output at the end of the `apply` job:
+![Pipeline output](./docs/pipeline_outputs.png)
+
+Click on the `web_endpoint` link and the application should show the follow result:
+![Application result](./docs/app_result.png)
+
+Each minute the secret will be rotate on the page. You can change the TTL value via the Terraform variable: `db_secret_ttl`.
+
+> The application take some time to start, please wait some minutes before getting the expected result.
+
+### Destroy the application
+
+When you have done with this demo, don't forget to destroy the application by using the `destroy` job in GitLab-CI:
+![pipeline destroy](./docs/pipeline_destroy.png)
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
